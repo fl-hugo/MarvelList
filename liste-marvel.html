@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Marvel — Ordre Chronologique</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --paper:#121317;
+    --paper-raised:#1b1d22;
+    --ink:#ece9e2;
+    --ink-soft:#9b9891;
+    --line:#31333b;
+    --accent:#8fadd9;
+    --accent-soft:#22293a;
+    --tierA:#e2564a;   --tierA-bg:#3b201e;   /* A — rouge */
+    --tierB:#e0ba4a;   --tierB-bg:#3a3018;   /* B — jaune */
+    --tierC:#6fbf82;   --tierC-bg:#1f3227;   /* C — vert */
+    --serie-mark:#3a3d46;
+    --font-display:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,'Noto Serif',serif;
+    --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,'Cascadia Mono','SF Mono',Consolas,'Liberation Mono',monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:980px;
+    margin:0 auto;
+    padding:40px 28px 64px;
+  }
+
+  /* ---- masthead ---- */
+  .masthead{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding-bottom:22px;
+    border-bottom:2px solid var(--ink);
+    margin-bottom:22px;
+  }
+  .eyebrow{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+  }
+  h1{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:clamp(28px,4vw,38px);
+    margin:0;
+    text-wrap:balance;
+    letter-spacing:-.01em;
+  }
+  .subtitle{
+    font-size:14px;
+    color:var(--ink-soft);
+    max-width:62ch;
+    line-height:1.5;
+    margin:0;
+  }
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 18px;
+    align-items:center;
+    margin-top:8px;
+    font-size:12px;
+  }
+  .legend-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:var(--ink-soft);
+  }
+  .swatch{
+    width:16px;height:16px;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);
+    font-size:9px;font-weight:700;
+    flex:none;
+  }
+  .swatch.a{background:var(--tierA-bg);color:var(--tierA);}
+  .swatch.b{background:var(--tierB-bg);color:var(--tierB);}
+  .swatch.c{background:var(--tierC-bg);color:var(--tierC);}
+  .swatch.s{background:var(--paper-raised);color:var(--ink-soft);border:1px solid var(--line);}
+  .count-stat{
+    margin-left:auto;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--ink-soft);
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---- table ---- */
+  .table-wrap{overflow-x:auto;}
+  table{
+    width:100%;
+    border-collapse:collapse;
+    background:var(--paper-raised);
+  }
+  thead{display:table-header-group;}
+  thead th{
+    text-align:left;
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    border-bottom:1.5px solid var(--ink);
+    padding:10px 12px;
+    background:var(--paper-raised);
+  }
+  th.num, td.num{text-align:right;width:38px;}
+  th.duration, td.duration{text-align:right;width:60px;}
+  th.tier, td.tier{width:150px;}
+  th.season, td.season{width:104px;}
+  th.poster, td.poster{width:88px;}
+
+  tbody tr{
+    border-bottom:1px solid var(--line);
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+  tbody tr.serie{
+    background:transparent;
+    box-shadow:inset 3px 0 0 var(--serie-mark);
+  }
+  td{
+    padding:14px 12px;
+    vertical-align:middle;
+    font-size:14px;
+  }
+  td.num{
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    color:var(--ink-soft);
+    font-size:13px;
+  }
+  tr.serie td.num{color:var(--ink-soft);font-weight:400;opacity:.8;}
+  .poster-frame{
+    width:72px;height:104px;
+    border-radius:5px;
+    overflow:hidden;
+    background:var(--line);
+    border:1px solid var(--line);
+    flex:none;
+    position:relative;
+  }
+  .poster-frame img{
+    width:100%;height:100%;
+    object-fit:cover;
+    display:block;
+  }
+  .poster-frame.fallback::after{
+    content:attr(data-initial);
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--font-display);
+    font-size:22px;
+    color:var(--ink-soft);
+    background:var(--paper-raised);
+  }
+  tr.serie .poster-frame{opacity:.7;}
+  td.title{font-weight:500;}
+  .title-main{line-height:1.35;}
+  tr.serie td.title .title-main{color:var(--ink-soft);font-weight:400;}
+  tr.serie .title-main::after{
+    content:"série";
+    font-family:var(--font-mono);
+    font-size:9.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    opacity:.75;
+    margin-left:8px;
+    font-weight:500;
+  }
+  td.duration{
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    color:var(--ink-soft);
+    font-size:13.5px;
+  }
+  .tier-pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:4px 10px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .tier-pill.a{background:var(--tierA-bg);color:var(--tierA);}
+  .tier-pill.b{background:var(--tierB-bg);color:var(--tierB);}
+  .tier-pill.c{background:var(--tierC-bg);color:var(--tierC);}
+  td.season{color:var(--ink-soft);font-size:12.5px;}
+
+  footer{
+    margin-top:28px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+    font-size:11px;
+    color:var(--ink-soft);
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+
+  /* ---- mobile ---- */
+  @media (max-width:640px){
+    .page{padding:24px 14px 48px;}
+    .masthead{gap:8px;padding-bottom:16px;margin-bottom:16px;}
+    h1{font-size:24px;}
+    .subtitle{font-size:13px;}
+    .legend{font-size:11px;gap:6px 12px;}
+    .count-stat{margin-left:0;width:100%;order:5;padding-top:4px;}
+
+    thead{display:none;}
+    .table-wrap{overflow-x:visible;}
+
+    tbody tr{
+      display:grid;
+      grid-template-columns:56px 1fr;
+      column-gap:12px;
+      row-gap:5px;
+      padding:12px 4px;
+      align-items:start;
+    }
+    td{padding:0;font-size:13px;}
+    td.poster{grid-row:1 / span 3;grid-column:1;width:auto;}
+    .poster-frame{width:56px;height:80px;}
+    td.num{display:none;}
+    td.title{grid-row:1;grid-column:2;}
+    .title-main::before{
+      content:"#" attr(data-n) " ";
+      font-family:var(--font-mono);
+      font-size:11px;
+      color:var(--ink-soft);
+      font-weight:400;
+    }
+    td.duration{display:none;}
+    td.tier{grid-row:2;grid-column:2;}
+    .tier-pill::before{
+      content:attr(data-duration);
+      font-family:var(--font-mono);
+      font-weight:400;
+      opacity:.75;
+      margin-right:2px;
+    }
+    .tier-pill{font-size:11.5px;padding:3px 9px;}
+    td.season{grid-row:3;grid-column:2;font-size:11.5px;}
+    tr.no-season td.season{display:none;}
+    tr.serie .title-main::after{display:block;margin-left:0;margin-top:2px;}
+  }
+
+  /* ---- print ---- */
+  @media print{
+    @page{ size:A4; margin:14mm 12mm; }
+    body{background:var(--paper);}
+    .page{max-width:none;padding:0;margin:0;}
+    .table-wrap{overflow:visible;}
+    a{color:inherit;text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <div class="eyebrow">Guide de visionnage</div>
+    <h1>Marvel — Ordre chronologique</h1>
+    <p class="subtitle">Films et séries dans l'ordre de sortie conseillé. Le code couleur indique le niveau d'importance ; un repère discret à gauche signale les séries.</p>
+    <div class="legend">
+      <div class="legend-item"><span class="swatch a">A</span> Indispensable</div>
+      <div class="legend-item"><span class="swatch b">B</span> Important</div>
+      <div class="legend-item"><span class="swatch c">C</span> Intéressant, dispensable</div>
+      <div class="legend-item"><span class="swatch s">S</span> Série (plusieurs saisons possibles)</div>
+      <div class="count-stat" id="count-stat"></div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th class="num">N°</th>
+          <th class="poster"></th>
+          <th class="title">Titre</th>
+          <th class="duration">Durée</th>
+          <th class="tier">Importance</th>
+          <th class="season">Saison</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    <span>Généré à partir de liste-marvel.md</span>
+    <span>Astuce impression : activer « graphiques d'arrière-plan » pour conserver les couleurs</span>
+  </footer>
+
+</div>
+
+<script>
+const TIER = { A:{label:'Indispensable'}, B:{label:'Important'}, C:{label:'Dispensable'} };
+
+// duration in minutes, or null for series (unknown/not applicable)
+const DATA = [
+["1","film","Captain America : First Avenger","https://a.ltrbxd.com/resized/sm/upload/fq/ys/wr/mt/captain-america-25-1200-1200-675-675-crop-000000.jpg?v=91843523ae",124,"A","—"],
+["2","film","Captain Marvel","https://a.ltrbxd.com/resized/sm/upload/t6/3d/p9/22/captain-marvel-1200-1200-675-675-crop-000000.jpg?v=c93f53fe2c",124,"A","—"],
+["3","film","Iron Man","https://a.ltrbxd.com/resized/sm/upload/x5/3a/wr/w8/iron-man-1200-1200-675-675-crop-000000.jpg?v=00c10943b3",126,"A","—"],
+["4","film","Iron Man 2","https://a.ltrbxd.com/resized/sm/upload/tg/cj/3a/jg/iron-man-2-50-1200-1200-675-675-crop-000000.jpg?v=879e105133",124,"A","—"],
+["5","film","L'Incroyable Hulk","https://a.ltrbxd.com/resized/sm/upload/he/51/l6/zj/the-incredible-hulk-10-1200-1200-675-675-crop-000000.jpg?v=2b79d82504",114,"B","—"],
+["6","film","Thor","https://a.ltrbxd.com/resized/sm/upload/o8/mt/91/41/thor-20-1200-1200-675-675-crop-000000.jpg?v=4d6fafd09b",115,"A","—"],
+["7","film","Avengers","https://a.ltrbxd.com/resized/sm/upload/8w/a1/14/qk/the-avengers-2012-1200-1200-675-675-crop-000000.jpg?v=a46491df32",143,"A","—"],
+["x","serie","Agents du SHIELD","https://media.themoviedb.org/t/p/w500/j6pen1MBLKbBoXrzrHSxfsd0lrC.jpg",null,"C","Saison 1"],
+["8","film","Thor : Le monde des ténèbres","https://a.ltrbxd.com/resized/sm/upload/qw/k5/lg/pv/thor-the-dark-world-1200-1200-675-675-crop-000000.jpg?v=148c3467ba",112,"B","—"],
+["9","film","Iron Man 3","https://a.ltrbxd.com/resized/sm/upload/2r/k1/nj/pv/iron-man-3-1200-1200-675-675-crop-000000.jpg?v=d56c523b1f",130,"A","—"],
+["10","film","Captain America : Le soldat de l'hiver","https://a.ltrbxd.com/resized/sm/upload/o6/qg/sr/lk/captain-america-winter-soldier-1200-1200-675-675-crop-000000.jpg?v=9670009a37",136,"A","—"],
+["x","serie","Agents du SHIELD","https://media.themoviedb.org/t/p/w500/j6pen1MBLKbBoXrzrHSxfsd0lrC.jpg",null,"C","Saison 2"],
+["11","film","Les Gardiens de la Galaxie","https://a.ltrbxd.com/resized/sm/upload/xl/kd/f5/wk/guardians-of-the-galaxy-1200-1200-675-675-crop-000000.jpg?v=1837002666",121,"A","—"],
+["12","film","Les Gardiens de la Galaxie Vol. 2","https://a.ltrbxd.com/resized/sm/upload/k8/71/2p/qo/guardians-galaxy-vol-2-1200-1200-675-675-crop-000000.jpg?v=f85fa0ca95",136,"A","—"],
+["x","serie","Daredevil","https://media.themoviedb.org/t/p/w500/jwhi2cBENpdMYJUkmVTJ6Fcrokf.jpg",null,"B","Saison 1"],
+["x","serie","Jessica Jones","https://media.themoviedb.org/t/p/w500/d8OS8nKmv45BjGXsWTOxRdiFm1X.jpg",null,"C","Saison 1"],
+["13","film","Avengers : L'Ère d'Ultron","https://a.ltrbxd.com/resized/sm/upload/gz/xu/8d/m4/avengers-age-of-ultron-1200-1200-675-675-crop-000000.jpg?v=489fa4b87c",141,"A","—"],
+["14","film","Ant-Man","https://a.ltrbxd.com/resized/sm/upload/6n/ne/n7/vu/ant-man-1200-1200-675-675-crop-000000.jpg?v=414d604c13",117,"A","—"],
+["x","serie","Daredevil","https://media.themoviedb.org/t/p/w500/jwhi2cBENpdMYJUkmVTJ6Fcrokf.jpg",null,"B","Saison 2"],
+["x","serie","Luke Cage","https://media.themoviedb.org/t/p/w500/whnbD6LEjHenvda3A2cV2Vky531.jpg",null,"C","Saison 1"],
+["x","serie","Iron Fist","https://media.themoviedb.org/t/p/w500/v6qcpqlpyRqZzmIehW3eOssTW5K.jpg",null,"C","Saison 1"],
+["x","serie","The Defenders","https://media.themoviedb.org/t/p/w500/k8UOUmPzCHrflLHxvNhogsJGo8D.jpg",null,"C","Mini-série"],
+["15","film","Captain America : Civil War","https://a.ltrbxd.com/resized/sm/upload/58/xd/g0/o7/captain-america-civil-war-1200-1200-675-675-crop-000000.jpg?v=9c02043ea9",147,"A","—"],
+["16","film","Black Widow","https://a.ltrbxd.com/resized/sm/upload/1i/dt/e0/63/black-widow-2021-1200-1200-675-675-crop-000000.jpg?v=47e1e4eff3",134,"B","—"],
+["17","film","Black Panther","https://a.ltrbxd.com/resized/sm/upload/pr/at/45/lo/black-panther-1200-1200-675-675-crop-000000.jpg?v=a267eebe87",134,"A","—"],
+["18","film","Spider-Man : Homecoming","https://a.ltrbxd.com/resized/sm/upload/lb/g8/9t/dr/spider-man-homecoming-1200-1200-675-675-crop-000000.jpg?v=a0c830f403",133,"A","—"],
+["x","serie","The Punisher","https://media.themoviedb.org/t/p/w500/ioWV96X8lFnjO8PPAl6ayfZGjkM.jpg",null,"B","Saison 1"],
+["19","film","Doctor Strange","https://a.ltrbxd.com/resized/sm/upload/h8/gd/di/02/doctor-strange-1200-1200-675-675-crop-000000.jpg?v=ee9ee04033",115,"A","—"],
+["x","serie","Jessica Jones","https://media.themoviedb.org/t/p/w500/d8OS8nKmv45BjGXsWTOxRdiFm1X.jpg",null,"C","Saison 2"],
+["x","serie","Luke Cage","https://media.themoviedb.org/t/p/w500/whnbD6LEjHenvda3A2cV2Vky531.jpg",null,"C","Saison 2"],
+["x","serie","Iron Fist","https://media.themoviedb.org/t/p/w500/v6qcpqlpyRqZzmIehW3eOssTW5K.jpg",null,"C","Saison 2"],
+["x","serie","Daredevil","https://media.themoviedb.org/t/p/w500/jwhi2cBENpdMYJUkmVTJ6Fcrokf.jpg",null,"C","Saison 3"],
+["x","serie","Jessica Jones","https://media.themoviedb.org/t/p/w500/d8OS8nKmv45BjGXsWTOxRdiFm1X.jpg",null,"C","Saison 3"],
+["20","film","Thor : Ragnarok","https://a.ltrbxd.com/resized/sm/upload/7c/3q/va/25/thor-ragnarok-1200-1200-675-675-crop-000000.jpg?v=ed507af10e",130,"A","—"],
+["21","film","Ant-Man et la Guêpe","https://a.ltrbxd.com/resized/sm/upload/rl/86/k0/y9/ant-man-and-wasp-1200-1200-675-675-crop-000000.jpg?v=e4b20f258f",118,"B","—"],
+["22","film","Avengers : Infinity War","https://a.ltrbxd.com/resized/sm/upload/22/q6/od/p6/avengers-infinity-war-1200-1200-675-675-crop-000000.jpg?v=1a4e940b9d",149,"A","—"],
+["23","film","Avengers : Endgame","https://a.ltrbxd.com/resized/sm/upload/pv/3f/zz/og/avengers-endgame-1200-1200-675-675-crop-000000.jpg?v=55fc50f8fa",181,"A","—"],
+["x","serie","Loki","https://media.themoviedb.org/t/p/w500/zNwEwSXojMrQapZHQx5fO8iph4R.jpg",null,"B","Saison 1"],
+["x","serie","Loki","https://media.themoviedb.org/t/p/w500/zNwEwSXojMrQapZHQx5fO8iph4R.jpg",null,"B","Saison 2"],
+["x","serie","WandaVision","https://media.themoviedb.org/t/p/w500/AXnCR7WE8BKlzsabQtUITySChn.jpg",null,"B","Saison 1"],
+["24","film","Shang-Chi et la Légende des Dix Anneaux","https://a.ltrbxd.com/resized/sm/upload/g3/ha/ra/bu/shang-chi-1200-1200-675-675-crop-000000.jpg?v=813ec0e7aa",132,"A","—"],
+["x","serie","Falcon et le Soldat de l'Hiver","https://media.themoviedb.org/t/p/w500/6NrUwEWDxZI2XffOnw3nuibukmX.jpg",null,"B","Saison 1"],
+["25","film","Les Éternels","https://a.ltrbxd.com/resized/sm/upload/ys/if/is/6o/eternals-2021-1200-1200-675-675-crop-000000.jpg?v=620fc5f089",156,"B","—"],
+["26","film","Spider-Man : Far From Home","https://a.ltrbxd.com/resized/sm/upload/ae/at/re/rc/spider-man-far-from-home_J2gRhk-1200-1200-675-675-crop-000000.jpg?v=58e0234aab",129,"A","—"],
+["27","film","Spider-Man","https://a.ltrbxd.com/resized/sm/upload/s3/jh/92/at/spider-man-1200-1200-675-675-crop-000000.jpg?v=cdd43f1a66",121,"B","—"],
+["28","film","Spider-Man 2","https://a.ltrbxd.com/resized/sm/upload/w2/of/wm/ou/jz6NCADCgj4dWU8RM81Xvrokey4-1200-1200-675-675-crop-000000.jpg?v=c9c668bc42",127,"B","—"],
+["29","film","Spider-Man 3","https://a.ltrbxd.com/resized/sm/upload/8l/e8/c8/6l/spider-man-3-1200-1200-675-675-crop-000000.jpg?v=8c1980ede4",139,"B","—"],
+["30","film","The Amazing Spider-Man","https://a.ltrbxd.com/resized/sm/upload/or/rc/5w/yi/the-amazing-spider-man-1200-1200-675-675-crop-000000.jpg?v=32e3ff16d6",136,"B","—"],
+["31","film","The Amazing Spider-Man 2","https://a.ltrbxd.com/resized/sm/upload/8g/vh/5j/hp/the-amazing-spider-man-2-1200-1200-675-675-crop-000000.jpg?v=365c496a70",142,"B","—"],
+["32","film","Spider-Man : No Way Home","https://a.ltrbxd.com/resized/sm/upload/3j/1m/pc/b8/spider-man-1200-1200-675-675-crop-000000.jpg?v=e9571e778c",148,"A","—"],
+["x","serie","Hawkeye","https://media.themoviedb.org/t/p/w500/cybZ7FoeBoBJPieKvSp4wh2yCMR.jpg",null,"B","Saison 1"],
+["33","film","Doctor Strange : Multiverse of Madness","https://a.ltrbxd.com/resized/sm/upload/m0/ks/k8/uw/dr%20strange-1200-1200-675-675-crop-000000.jpg?v=8bbfc10c4e",126,"A","—"],
+["x","serie","Moon Knight","https://media.themoviedb.org/t/p/w500/xrkDlkL6u26DLeBw2Cao8pYtrYH.jpg",null,"C","Saison 1"],
+["34","film","Black Panther : Wakanda Forever","https://a.ltrbxd.com/resized/sm/upload/3j/c8/w0/ot/black-1200-1200-675-675-crop-000000.jpg?v=56479a660b",161,"A","—"],
+["x","serie","She-Hulk","https://media.themoviedb.org/t/p/w500/poWy1hDzaIFv6UaYtFDNcNfiM2C.jpg",null,"C","Saison 1"],
+["x","serie","Ms. Marvel","https://media.themoviedb.org/t/p/w500/3x1eRyuz2NOOSXODDcDl9EjGRQ.jpg",null,"B","Saison 1"],
+["35","film","Thor : Love and Thunder","https://a.ltrbxd.com/resized/sm/upload/if/fa/6g/az/thor-1200-1200-675-675-crop-000000.jpg?v=7a8bd83a71",119,"B","—"],
+["36","film","Ant-Man et la Guêpe : Quantumania","https://a.ltrbxd.com/resized/sm/upload/4e/v8/5x/1u/ant-man-and-the-wasp-quantumania-1200-1200-675-675-crop-000000.jpg?v=c4b9e3eb13",125,"B","—"],
+["37","film","Les Gardiens de la Galaxie Vol. 3","https://a.ltrbxd.com/resized/sm/upload/4c/6j/js/74/guardians%203-1200-1200-675-675-crop-000000.jpg?v=ab95c6f636",150,"A","—"],
+["38","film","The Marvels","https://a.ltrbxd.com/resized/sm/upload/g6/6a/9u/jz/marvels-1200-1200-675-675-crop-000000.jpg?v=d4e9e286b4",105,"A","—"],
+["x","serie","Agatha All Along","https://media.themoviedb.org/t/p/w500/mGsxKwXUjojitRv2E9qMTbxbBRd.jpg",null,"B","Saison 1"],
+["x","serie","Daredevil : Born Again","https://media.themoviedb.org/t/p/w500/7UMmvMvhSw1jBgdz0NzLo9pa93g.jpg",null,"B","Saison 1"],
+["39","film","Captain America : Brave New World","https://a.ltrbxd.com/resized/alternative-backdrop/7/3/8/2/9/2/tmdb/qfAfE5auxsuxhxPpnETRAyTP5ff-1200-1200-675-675-crop-000000.jpg?v=5b464360f7",118,"A","—"],
+["40","film","Thunderbolts*","https://a.ltrbxd.com/resized/sm/upload/38/f6/km/as/thunderbolts-1200-1200-675-675-crop-000000.jpg?v=d1603150dd",126,"A","—"],
+["41","film","Les 4 Fantastiques","https://a.ltrbxd.com/resized/sm/upload/sl/qn/yx/cb/fantastic-four-1200-1200-675-675-crop-000000.jpg?v=ce0a7572aa",106,"C","—"],
+["42","film","Les 4 Fantastiques et le Surfer d'Argent","https://a.ltrbxd.com/resized/sm/upload/us/me/rb/3l/fantastic-four-rise-silver-surfer-110-1200-1200-675-675-crop-000000.jpg?v=f216ef38eb",92,"C","—"],
+["43","film","Les 4 Fantastiques : Premiers Pas","https://a.ltrbxd.com/resized/film-poster/5/4/3/9/6/7/543967-the-fantastic-four-first-steps-0-600-0-900-crop.jpg?v=ab7c919b04",114,"A","—"],
+["44","film","X-Men","https://a.ltrbxd.com/resized/sm/upload/3d/x6/ff/na/x-men-1200-1200-675-675-crop-000000.jpg?v=b6a9d748d7",104,"C","—"],
+["45","film","X2","https://a.ltrbxd.com/resized/sm/upload/0n/us/7t/hj/x2-xmen-1200-1200-675-675-crop-000000.jpg?v=7552a86824",134,"C","—"],
+["46","film","X-Men : L'Affrontement Final","https://a.ltrbxd.com/resized/sm/upload/nn/1y/io/s8/x-men-last-stand-20-1200-1200-675-675-crop-000000.jpg?v=628eef6e94",104,"C","—"],
+["47","film","X-Men : Le Commencement","https://a.ltrbxd.com/resized/sm/upload/j2/79/dm/yv/x-men-first-class-35-1200-1200-675-675-crop-000000.jpg?v=78947ccd56",132,"C","—"],
+["48","film","X-Men : Days of Future Past","https://a.ltrbxd.com/resized/sm/upload/ad/gq/k5/g6/x-men-days-of-future-past-1200-1200-675-675-crop-000000.jpg?v=27832434b4",132,"C","—"],
+["49","film","X-Men : Apocalypse","https://a.ltrbxd.com/resized/sm/upload/tp/p7/h6/q5/x-men-apocalypse-1200-1200-675-675-crop-000000.jpg?v=e6e2b0c1c9",144,"C","—"],
+["50","film","X-Men : Dark Phoenix","https://a.ltrbxd.com/resized/sm/upload/28/td/16/84/dark-phoenix-1200-1200-675-675-crop-000000.jpg?v=6287a2c731",114,"C","—"],
+["51","film","Logan","https://a.ltrbxd.com/resized/sm/upload/3g/vl/z4/dt/logan-2017-1200-1200-675-675-crop-000000.jpg?v=33cba47db1",137,"B","—"],
+["52","film","Deadpool","https://a.ltrbxd.com/resized/sm/upload/ht/ra/iv/pe/deadpool-1200-1200-675-675-crop-000000.jpg?v=dfdc8de461",108,"A","—"],
+["53","film","Deadpool 2","https://a.ltrbxd.com/resized/sm/upload/m5/47/vf/x3/deadpool-2-1200-1200-675-675-crop-000000.jpg?v=f157717712",119,"A","—"],
+["54","film","Deadpool et Wolverine","https://a.ltrbxd.com/resized/sm/upload/sx/jl/oa/c4/yDHYTfA3R0jFYba16jBB1ef8oIt-1200-1200-675-675-crop-000000.jpg?v=aaa4c9000d",128,"A","—"],
+["55","film","Spider-Man : Brand New Day","https://a.ltrbxd.com/resized/film-poster/8/7/2/8/7/1/872871-spider-man-brand-new-day-0-600-0-900-crop.jpg?v=ebe6beb4fc",145,"A","—"]
+];
+
+function fmtDuration(min){
+  if(!min) return '—';
+  const h = Math.floor(min/60);
+  const m = String(min%60).padStart(2,'0');
+  return `${h}h${m}`;
+}
+
+const tbody = document.getElementById('rows');
+let filmCount = 0;
+const seriesTitles = new Set();
+
+for (const [n, type, title, poster, minutes, tier, season] of DATA) {
+  if (type === 'film') filmCount++;
+  else seriesTitles.add(title);
+
+  const tr = document.createElement('tr');
+  tr.className = type === 'serie' ? 'serie' : '';
+  if (season === '—') tr.classList.add('no-season');
+
+  tr.innerHTML = `
+    <td class="num">${n}</td>
+    <td class="poster"><div class="poster-frame" data-initial="${title.trim()[0]}"><img src="${poster}" alt="" loading="lazy"></div></td>
+    <td class="title"><span class="title-main" data-n="${n}">${title}</span></td>
+    <td class="duration">${fmtDuration(minutes)}</td>
+    <td class="tier"><span class="tier-pill ${tier.toLowerCase()}" data-duration="${fmtDuration(minutes)}">${tier} · ${TIER[tier].label}</span></td>
+    <td class="season">${season}</td>
+  `;
+  tbody.appendChild(tr);
+}
+
+// Graceful fallback for posters that fail to load (dead link, CDN hiccup, rate limit):
+// retry once, then show the film's initial instead of a broken image icon.
+tbody.querySelectorAll('img').forEach(img => {
+  let retried = false;
+  img.addEventListener('error', () => {
+    if (!retried) {
+      retried = true;
+      const url = new URL(img.src);
+      url.searchParams.set('_retry', Date.now());
+      img.src = url.toString();
+      return;
+    }
+    img.closest('.poster-frame').classList.add('fallback');
+    img.remove();
+  });
+});
+
+document.getElementById('count-stat').textContent =
+  `${filmCount} films · ${seriesTitles.size} séries · ${DATA.length} entrées`;
+</script>
+</body>
+</html>

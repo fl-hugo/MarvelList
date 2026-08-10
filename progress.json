@@ -1,7 +1,8 @@
 {
   "hugo": {
     "watched": {
-      "0": true
+      "0": true,
+      "1": true
     },
     "ratings": {},
     "hidden": {}

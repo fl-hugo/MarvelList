@@ -1,4 +1,14 @@
 {
-  "hugo": { "watched": {}, "ratings": {}, "hidden": {} },
-  "lea": { "watched": {}, "ratings": {}, "hidden": {} }
+  "hugo": {
+    "watched": {
+      "0": true
+    },
+    "ratings": {},
+    "hidden": {}
+  },
+  "lea": {
+    "watched": {},
+    "ratings": {},
+    "hidden": {}
+  }
 }

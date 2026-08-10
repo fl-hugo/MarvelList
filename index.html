@@ -1016,21 +1016,30 @@ async function pushRemote(){
     const content = JSON.stringify(progress, null, 2);
     const encoded = btoa(unescape(encodeURIComponent(content)));
     const url = `https://api.github.com/repos/${SYNC.owner}/${SYNC.repo}/contents/${SYNC.path}`;
-    const body = {
-      message: 'Mise à jour progression Marvel',
-      content: encoded,
-      branch: SYNC.branch
+    const put = () => {
+      const body = {
+        message: 'Mise à jour progression Marvel',
+        content: encoded,
+        branch: SYNC.branch
+      };
+      if (remoteSha) body.sha = remoteSha;
+      return fetch(url, {
+        method: 'PUT',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          Accept: 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
     };
-    if (remoteSha) body.sha = remoteSha;
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + token,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
+    let res = await put();
+    if (res.status === 409 || res.status === 422) {
+      // sha absent ou obsolète (ex. premier push après rechargement) : on récupère le sha courant et on retente une fois.
+      const remote = await fetchProgressFromApi();
+      if (remote?.sha) remoteSha = remote.sha;
+      res = await put();
+    }
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const payload = await res.json();
     remoteSha = payload.content?.sha || remoteSha;
@@ -1119,13 +1128,6 @@ function initSync(){
   clearInterval(pollTimer);
   pollTimer = setInterval(pullRemote, POLL_MS);
 }
-
-window.addEventListener('beforeunload', e => {
-  if (dirty || writeInFlight) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
-});
 
 function showWelcomeIfNeeded(){
   currentUser = normalizeUserId(currentUser);

@@ -11,7 +11,10 @@
     "hidden": {}
   },
   "lea": {
-    "watched": {},
+    "watched": {
+      "0": true,
+      "1": true
+    },
     "ratings": {},
     "hidden": {}
   }

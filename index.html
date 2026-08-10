@@ -698,6 +698,7 @@ const USERS = {
 const LS_USER = 'marvel-user';
 const LS_CACHE = 'marvel-progress-cache';
 const LS_TOKEN = 'marvel-github-token';
+const LS_LAST_PUSHED = 'marvel-last-pushed';
 const LEGACY_USER_IDS = { copine:'lea', 'Léa':'lea' };
 
 // Synchronisation via GitHub — seul owner est dans le code (public).
@@ -837,6 +838,7 @@ let remoteSha = null;
 let writeTimer = null;
 let pollTimer = null;
 let writeInFlight = false;
+let dirty = false;
 
 function emptyUserState(){
   return { watched:{}, ratings:{}, hidden:{} };
@@ -983,6 +985,7 @@ async function fetchProgressFromRaw(){
 }
 
 async function pullRemote(){
+  if (dirty || writeInFlight) return;
   try {
     const token = getSyncToken();
     if (SYNC.owner && token) {
@@ -1031,6 +1034,8 @@ async function pushRemote(){
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const payload = await res.json();
     remoteSha = payload.content?.sha || remoteSha;
+    localStorage.setItem(LS_LAST_PUSHED, content);
+    dirty = false;
     setSyncStatus('online', 'Synchronisé');
     hideSyncBanner();
   } catch {
@@ -1043,6 +1048,7 @@ async function pushRemote(){
 
 function scheduleWrite(){
   saveCache();
+  dirty = true;
   if (!getSyncToken()) {
     showSyncBanner('Pour enregistrer vos changements, configurez un token GitHub via le bouton « Token » (stocké uniquement sur cet appareil).');
     return;
@@ -1089,16 +1095,37 @@ function saveTokenFromModal(){
   setSyncToken(token);
   closeTokenModal();
   updateSyncUi();
-  pullRemote();
+  if (dirty) {
+    clearTimeout(writeTimer);
+    pushRemote();
+  } else {
+    pullRemote();
+  }
 }
 
 function initSync(){
   loadCache();
   updateSyncUi();
-  pullRemote();
+  const cached = localStorage.getItem(LS_CACHE);
+  const lastPushed = localStorage.getItem(LS_LAST_PUSHED);
+  if (isSyncWriteEnabled() && cached && cached !== lastPushed) {
+    // Des changements locaux n'ont pas été confirmés envoyés (fermeture/refresh avant la fin du push) :
+    // on les pousse avant de tirer, sinon pullRemote() les écraserait avec l'ancienne version distante.
+    dirty = true;
+    pushRemote();
+  } else {
+    pullRemote();
+  }
   clearInterval(pollTimer);
   pollTimer = setInterval(pullRemote, POLL_MS);
 }
+
+window.addEventListener('beforeunload', e => {
+  if (dirty || writeInFlight) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 
 function showWelcomeIfNeeded(){
   currentUser = normalizeUserId(currentUser);

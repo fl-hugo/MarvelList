@@ -48,12 +48,16 @@
   },
   "lea": {
     "watched": {
-      "1": true,
+      "0": true,
+      "3": true,
+      "5": true,
       "58": true,
       "78": true
     },
     "ratings": {
-      "1": 3
+      "0": 4,
+      "3": 3,
+      "5": 2.5
     },
     "hidden": {}
   }

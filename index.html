@@ -156,6 +156,42 @@
     border-color:var(--accent);
     color:var(--accent);
   }
+  .filter-dropdown{position:relative;flex:none;}
+  .filter-panel{
+    position:absolute;
+    top:calc(100% + 8px);
+    right:0;
+    z-index:20;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding:12px 15px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--paper-raised);
+    box-shadow:0 10px 28px rgba(0,0,0,.4);
+    min-width:160px;
+    opacity:1;
+    transform:translateY(0);
+    transition:opacity .15s ease,transform .15s ease;
+  }
+  .filter-panel.hidden{
+    opacity:0;
+    transform:translateY(-6px);
+    pointer-events:none;
+  }
+  .filter-check{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-family:var(--font-body);
+    font-size:13px;
+    color:var(--ink);
+    cursor:pointer;
+    user-select:none;
+    padding:2px 0;
+  }
+  .filter-check input{cursor:pointer;accent-color:var(--accent);width:15px;height:15px;flex:none;}
   .sort-mobile{
     display:none;
     flex:1 1 160px;
@@ -398,10 +434,10 @@
     display:inline-block;
     cursor:pointer;
     line-height:1;
-    font-size:15px;
-    letter-spacing:1px;
-    width:88px;
-    height:15px;
+    font-size:22px;
+    letter-spacing:1.5px;
+    width:var(--star-w,99px);
+    height:22px;
   }
   .star-rating.readonly{cursor:default;pointer-events:none;}
   .star-rating .stars-bg{color:var(--star-empty);}
@@ -529,10 +565,23 @@
     .legend{font-size:11px;gap:6px 12px;}
     .count-stat{margin-left:0;width:100%;order:5;padding-top:4px;}
     .toolbar{gap:10px;margin-bottom:14px;}
-    .filter-group{width:100%;justify-content:flex-start;}
+    .filter-panel{
+      right:0;
+      min-width:190px;
+      padding:14px 16px;
+      gap:14px;
+      border-radius:12px;
+    }
+    .filter-check{font-size:15px;padding:3px 0;}
+    .filter-check input{width:19px;height:19px;}
     .sort-mobile{display:block;width:100%;}
     .user-bar{margin-bottom:14px;padding:10px 12px;}
-    .progress-label{width:36px;font-size:9px;}
+    .user-btn{padding:9px 16px;font-size:14px;}
+    .progress-label{width:42px;font-size:10.5px;}
+    .star-rating{font-size:26px;letter-spacing:1.7px;height:26px;}
+    .progress-row{gap:10px;}
+    .progress-actions{gap:10px;}
+    .btn-icon{padding:8px 13px;font-size:12.5px;min-height:36px;}
 
     thead{display:none;}
     .table-wrap{overflow-x:visible;}
@@ -622,7 +671,6 @@
       <div class="legend-item"><span class="swatch a">A</span> Indispensable</div>
       <div class="legend-item"><span class="swatch b">B</span> Important</div>
       <div class="legend-item"><span class="swatch c">C</span> Intéressant, dispensable</div>
-      <div class="legend-item"><span class="swatch s">S</span> Série (plusieurs saisons possibles)</div>
       <div class="count-stat" id="count-stat"></div>
     </div>
   </div>
@@ -643,13 +691,14 @@
     <div class="search-wrap">
       <input type="search" id="search" placeholder="Rechercher un titre…" autocomplete="off" spellcheck="false">
     </div>
-    <div class="filter-group" role="group" aria-label="Filtrer par type">
-      <button type="button" class="filter-btn active" data-type="all">Tout</button>
-      <button type="button" class="filter-btn" data-type="film">Films</button>
-      <button type="button" class="filter-btn" data-type="serie">Séries</button>
-    </div>
-    <div class="filter-group" role="group" aria-label="Affichage masqués">
-      <button type="button" class="filter-btn" id="toggle-hidden" data-hidden="off">Masqués</button>
+    <div class="filter-dropdown">
+      <button type="button" class="filter-btn" id="filter-toggle" aria-haspopup="true" aria-expanded="false">Filtres</button>
+      <div class="filter-panel hidden" id="filter-panel" role="group" aria-label="Filtres">
+        <label class="filter-check"><input type="checkbox" data-filter="film" checked> Films</label>
+        <label class="filter-check"><input type="checkbox" data-filter="serie" checked> Séries</label>
+        <label class="filter-check"><input type="checkbox" data-filter="watched" checked> Vus</label>
+        <label class="filter-check"><input type="checkbox" data-filter="hidden" checked> Masqués</label>
+      </div>
     </div>
     <div class="sort-mobile">
       <select id="sort-mobile" aria-label="Trier par">
@@ -702,9 +751,11 @@ const LS_LAST_PUSHED = 'marvel-last-pushed';
 const LEGACY_USER_IDS = { copine:'lea', 'Léa':'lea' };
 
 // Synchronisation via GitHub — seul owner est dans le code (public).
-// Le token d'écriture est saisi une fois par appareil et stocké en localStorage.
+// Token en dur ci-dessous : accès limité à ce dépôt, sans donnée sensible — risque accepté.
+// Un token saisi via le bouton « Token » reste prioritaire (utile si celui-ci est révoqué par GitHub).
+const HARDCODED_TOKEN = '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';
 const SYNC = {
-  owner:  'fl-hugo',           // ex. 'hugof'
+  owner:  'fl-hugo',
   repo:   'MarvelList',
   branch: 'main',
   path:   'progress.json'
@@ -816,8 +867,9 @@ const tbody = document.getElementById('rows');
 const countStat = document.getElementById('count-stat');
 const searchInput = document.getElementById('search');
 const sortMobile = document.getElementById('sort-mobile');
-const filterBtns = document.querySelectorAll('.filter-btn[data-type]');
-const toggleHiddenBtn = document.getElementById('toggle-hidden');
+const filterToggleBtn = document.getElementById('filter-toggle');
+const filterPanel = document.getElementById('filter-panel');
+const filterChecks = document.querySelectorAll('#filter-panel input[type="checkbox"]');
 const sortHeaders = document.querySelectorAll('th.sortable');
 const userBtns = document.querySelectorAll('.user-btn');
 const welcomeOverlay = document.getElementById('welcome');
@@ -828,10 +880,9 @@ const syncStatus = document.getElementById('sync-status');
 const syncLabel = document.getElementById('sync-label');
 const syncBanner = document.getElementById('sync-banner');
 
-let typeFilter = 'all';
+let filters = { film:true, serie:true, watched:true, hidden:true };
 let sortKey = 'index';
 let sortDir = 'asc';
-let showHidden = false;
 let currentUser = localStorage.getItem(LS_USER) || '';
 let progress = { hugo: emptyUserState(), lea: emptyUserState() };
 let remoteSha = null;
@@ -867,7 +918,9 @@ function normalizeUserId(user){
 }
 
 function getSyncToken(){
-  return localStorage.getItem(LS_TOKEN) || '';
+  const stored = localStorage.getItem(LS_TOKEN);
+  if (stored) return stored;
+  return HARDCODED_TOKEN && HARDCODED_TOKEN !== 'COLLE_TON_TOKEN_ICI' ? HARDCODED_TOKEN : '';
 }
 
 function setSyncToken(token){
@@ -899,8 +952,12 @@ function loadCache(){
   } catch { /* ignore corrupt cache */ }
 }
 
+function serializeProgress(){
+  return JSON.stringify(progress, null, 2);
+}
+
 function saveCache(){
-  localStorage.setItem(LS_CACHE, JSON.stringify(progress));
+  localStorage.setItem(LS_CACHE, serializeProgress());
 }
 
 function migrateLegacyProgress(data){
@@ -1013,7 +1070,7 @@ async function pushRemote(){
   writeInFlight = true;
   setSyncStatus('online', 'Enregistrement…');
   try {
-    const content = JSON.stringify(progress, null, 2);
+    const content = serializeProgress();
     const encoded = btoa(unescape(encodeURIComponent(content)));
     const url = `https://api.github.com/repos/${SYNC.owner}/${SYNC.repo}/contents/${SYNC.path}`;
     const put = () => {
@@ -1192,8 +1249,31 @@ function ratingFromPointer(e, el){
   const rect = el.getBoundingClientRect();
   const x = Math.max(0, Math.min(rect.width, (e.clientX ?? 0) - rect.left));
   const raw = (x / rect.width) * 5;
-  return Math.max(0.5, Math.min(5, Math.ceil(raw * 2) / 2));
+  return Math.max(0.5, Math.min(5, Math.round(raw * 2) / 2));
 }
+
+// La largeur de .star-rating doit correspondre exactement à la largeur réelle du texte
+// "★★★★★" (police/letter-spacing courants) : sinon le remplissage en % ne s'aligne pas
+// sur les bords des étoiles et on peut voir un tiers/quart d'étoile rempli.
+function calibrateStarWidth(){
+  const probe = document.createElement('span');
+  probe.className = 'star-rating';
+  probe.style.position = 'fixed';
+  probe.style.visibility = 'hidden';
+  probe.style.left = '-9999px';
+  probe.style.width = 'auto';
+  probe.textContent = '★★★★★';
+  document.body.appendChild(probe);
+  const w = probe.getBoundingClientRect().width;
+  document.body.removeChild(probe);
+  if (w > 0) document.documentElement.style.setProperty('--star-w', w + 'px');
+}
+
+let starResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(starResizeTimer);
+  starResizeTimer = setTimeout(calibrateStarWidth, 150);
+});
 
 function setRating(user, id, rating){
   const state = getUserState(user);
@@ -1302,8 +1382,10 @@ function renderRows(){
   const query = normalize(searchInput.value.trim());
   let items = ITEMS.filter(item => {
     const id = itemKey(item.index);
-    if (!showHidden && isHidden(currentUser, id)) return false;
-    if (typeFilter !== 'all' && item.type !== typeFilter) return false;
+    if (!filters.hidden && isHidden(currentUser, id)) return false;
+    if (item.type === 'film' && !filters.film) return false;
+    if (item.type === 'serie' && !filters.serie) return false;
+    if (!filters.watched && isWatched(currentUser, id)) return false;
     if (query && !normalize(item.title).includes(query)) return false;
     return true;
   });
@@ -1332,11 +1414,11 @@ function renderRows(){
   attachPosterFallback(tbody);
 
   const myState = getUserState(currentUser);
-  const watchedCount = Object.keys(myState.watched).length;
+  const watchedCount = items.filter(i => isWatched(currentUser, itemKey(i.index))).length;
   const hiddenCount = Object.keys(myState.hidden).length;
   const shownFilms = items.filter(i => i.type === 'film').length;
   const shownSeries = items.filter(i => i.type === 'serie').length;
-  const filtered = query || typeFilter !== 'all' || !showHidden;
+  const filtered = Boolean(query) || !filters.film || !filters.serie || !filters.watched || !filters.hidden;
   const progressStat = `${watchedCount} vu${watchedCount > 1 ? 's' : ''}${hiddenCount ? ` · ${hiddenCount} masqué${hiddenCount > 1 ? 's' : ''}` : ''}`;
   const base = `${filmCount} films · ${seriesTitles.size} séries`;
   if (filtered) {
@@ -1355,10 +1437,30 @@ function setSort(key, dir){
 
 searchInput.addEventListener('input', renderRows);
 
-filterBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    typeFilter = btn.dataset.type;
-    filterBtns.forEach(b => b.classList.toggle('active', b === btn));
+function updateFilterToggleState(){
+  const allOn = Object.values(filters).every(Boolean);
+  filterToggleBtn.classList.toggle('active', !allOn);
+  filterToggleBtn.textContent = allOn ? 'Filtres' : 'Filtres •';
+}
+
+filterToggleBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const willOpen = filterPanel.classList.contains('hidden');
+  filterPanel.classList.toggle('hidden', !willOpen);
+  filterToggleBtn.setAttribute('aria-expanded', String(willOpen));
+});
+
+document.addEventListener('click', (e) => {
+  if (!filterPanel.classList.contains('hidden') && !filterPanel.contains(e.target) && e.target !== filterToggleBtn) {
+    filterPanel.classList.add('hidden');
+    filterToggleBtn.setAttribute('aria-expanded', 'false');
+  }
+});
+
+filterChecks.forEach(cb => {
+  cb.addEventListener('change', () => {
+    filters[cb.dataset.filter] = cb.checked;
+    updateFilterToggleState();
     renderRows();
   });
 });
@@ -1383,13 +1485,6 @@ sortMobile.addEventListener('change', () => {
   setSort(key, dir);
 });
 
-toggleHiddenBtn.addEventListener('click', () => {
-  showHidden = !showHidden;
-  toggleHiddenBtn.classList.toggle('active', showHidden);
-  toggleHiddenBtn.dataset.hidden = showHidden ? 'on' : 'off';
-  toggleHiddenBtn.textContent = showHidden ? 'Masqués ✓' : 'Masqués';
-  renderRows();
-});
 
 tokenSetupBtn?.addEventListener('click', openTokenModal);
 document.getElementById('token-save')?.addEventListener('click', saveTokenFromModal);
@@ -1421,6 +1516,7 @@ tbody.addEventListener('click', e => {
 showWelcomeIfNeeded();
 updateUserButtons();
 updateSortHeaders();
+calibrateStarWidth();
 initSync();
 renderRows();
 </script>

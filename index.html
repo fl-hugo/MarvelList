@@ -890,6 +890,7 @@ let writeTimer = null;
 let pollTimer = null;
 let writeInFlight = false;
 let dirty = false;
+let pushAttempt = 0;
 
 function emptyUserState(){
   return { watched:{}, ratings:{}, hidden:{} };
@@ -1091,8 +1092,13 @@ async function pushRemote(){
       });
     };
     let res = await put();
-    if (res.status === 409 || res.status === 422) {
-      // sha absent ou obsolète (ex. premier push après rechargement) : on récupère le sha courant et on retente une fois.
+    // Conflit de sha (409/422) : quelqu'un d'autre a écrit entre-temps. On retente
+    // à chaud plusieurs fois avec un sha frais avant d'abandonner — la plupart des
+    // conflits se résolvent tout seuls dès que l'autre écriture est terminée.
+    let conflictRetries = 0;
+    while ((res.status === 409 || res.status === 422) && conflictRetries < 3) {
+      conflictRetries++;
+      await new Promise(r => setTimeout(r, 300 * conflictRetries));
       const remote = await fetchProgressFromApi();
       if (remote?.sha) remoteSha = remote.sha;
       res = await put();
@@ -1100,18 +1106,33 @@ async function pushRemote(){
     if (!res.ok) {
       let detail = '';
       try { detail = (await res.json())?.message || ''; } catch { /* pas de corps JSON exploitable */ }
-      throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail : ''}`);
+      const err = new Error(`HTTP ${res.status}${detail ? ' — ' + detail : ''}`);
+      err.status = res.status;
+      throw err;
     }
     const payload = await res.json();
     remoteSha = payload.content?.sha || remoteSha;
     localStorage.setItem(LS_LAST_PUSHED, content);
     dirty = false;
+    pushAttempt = 0;
     setSyncStatus('online', 'Synchronisé');
     hideSyncBanner();
   } catch (err) {
     console.error('[MarvelList] Échec de la sauvegarde GitHub :', err);
     setSyncStatus('offline', 'Erreur enregistrement');
     showSyncBanner('Impossible d\'enregistrer sur GitHub : ' + (err?.message || 'erreur inconnue') + '. Vérifiez votre token (bouton « Token ») et ses droits sur le dépôt.');
+    // Un conflit persistant a de bonnes chances de se résoudre tout seul un peu plus
+    // tard (l'autre écriture finit par se stabiliser) : on retente en tâche de fond
+    // sans que l'utilisateur ait à refaire une action. Les erreurs de token/droits
+    // (401/403/404) ne sont elles jamais retentées automatiquement, ça ne servirait à rien.
+    const isConflict = err?.status === 409 || err?.status === 422;
+    if (isConflict && pushAttempt < 4) {
+      pushAttempt++;
+      clearTimeout(writeTimer);
+      writeTimer = setTimeout(pushRemote, 4000);
+    } else {
+      pushAttempt = 0;
+    }
   } finally {
     writeInFlight = false;
   }
@@ -1120,6 +1141,7 @@ async function pushRemote(){
 function scheduleWrite(){
   saveCache();
   dirty = true;
+  pushAttempt = 0;
   if (!getSyncToken()) {
     showSyncBanner('Pour enregistrer vos changements, configurez un token GitHub via le bouton « Token » (stocké uniquement sur cet appareil).');
     return;

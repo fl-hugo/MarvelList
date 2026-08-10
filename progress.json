@@ -48,12 +48,12 @@
   },
   "lea": {
     "watched": {
-      "0": true,
+      "1": true,
       "58": true,
       "78": true
     },
     "ratings": {
-      "0": 4
+      "1": 3
     },
     "hidden": {}
   }

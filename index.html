@@ -1097,16 +1097,21 @@ async function pushRemote(){
       if (remote?.sha) remoteSha = remote.sha;
       res = await put();
     }
-    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json())?.message || ''; } catch { /* pas de corps JSON exploitable */ }
+      throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail : ''}`);
+    }
     const payload = await res.json();
     remoteSha = payload.content?.sha || remoteSha;
     localStorage.setItem(LS_LAST_PUSHED, content);
     dirty = false;
     setSyncStatus('online', 'Synchronisé');
     hideSyncBanner();
-  } catch {
+  } catch (err) {
+    console.error('[MarvelList] Échec de la sauvegarde GitHub :', err);
     setSyncStatus('offline', 'Erreur enregistrement');
-    showSyncBanner('Impossible d\'enregistrer sur GitHub. Vérifiez votre token (bouton « Token ») et ses droits sur le dépôt.');
+    showSyncBanner('Impossible d\'enregistrer sur GitHub : ' + (err?.message || 'erreur inconnue') + '. Vérifiez votre token (bouton « Token ») et ses droits sur le dépôt.');
   } finally {
     writeInFlight = false;
   }

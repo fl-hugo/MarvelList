@@ -1071,37 +1071,57 @@ async function pushRemote(){
   writeInFlight = true;
   setSyncStatus('online', 'Enregistrement…');
   try {
-    const content = serializeProgress();
-    const encoded = btoa(unescape(encodeURIComponent(content)));
     const url = `https://api.github.com/repos/${SYNC.owner}/${SYNC.repo}/contents/${SYNC.path}`;
-    const put = () => {
-      const body = {
-        message: 'Mise à jour progression Marvel',
-        content: encoded,
-        branch: SYNC.branch
-      };
-      if (remoteSha) body.sha = remoteSha;
-      return fetch(url, {
-        method: 'PUT',
-        headers: {
-          Authorization: 'Bearer ' + token,
-          Accept: 'application/vnd.github+json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
+
+    // Chaque écriture remplace le fichier entier (les deux utilisateurs y sont). Si on pousse
+    // une copie locale périmée du partenaire, on écrase silencieusement ses changements récents —
+    // c'est exactement ce qui a causé une perte de données réelle. Donc juste avant d'écrire (et
+    // avant chaque retry), on relit l'état distant et on n'affirme jamais que les données de
+    // l'utilisateur courant sur cet appareil ; celles du partenaire viennent toujours du serveur.
+    const mergePartnerFromRemote = async () => {
+      const remote = await fetchProgressFromApi();
+      if (remote?.sha) remoteSha = remote.sha;
+      const partner = partnerOf(currentUser);
+      if (partner && remote?.data?.[partner]) {
+        progress[partner] = {
+          watched: { ...(remote.data[partner].watched || {}) },
+          ratings: { ...(remote.data[partner].ratings || {}) },
+          hidden:  { ...(remote.data[partner].hidden  || {}) }
+        };
+      }
     };
-    let res = await put();
+
+    const buildBody = () => {
+      const content = serializeProgress();
+      const encoded = btoa(unescape(encodeURIComponent(content)));
+      const body = { message: 'Mise à jour progression Marvel', content: encoded, branch: SYNC.branch };
+      if (remoteSha) body.sha = remoteSha;
+      return { body, content };
+    };
+    const put = (body) => fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    await mergePartnerFromRemote();
+    let { body, content } = buildBody();
+    let res = await put(body);
     // Conflit de sha (409/422) : quelqu'un d'autre a écrit entre-temps. On retente
-    // à chaud plusieurs fois avec un sha frais avant d'abandonner — la plupart des
-    // conflits se résolvent tout seuls dès que l'autre écriture est terminée.
+    // à chaud plusieurs fois avec un sha frais (et les données du partenaire refraîchies)
+    // avant d'abandonner — la plupart des conflits se résolvent tout seuls dès que
+    // l'autre écriture est terminée.
     let conflictRetries = 0;
     while ((res.status === 409 || res.status === 422) && conflictRetries < 3) {
       conflictRetries++;
       await new Promise(r => setTimeout(r, 300 * conflictRetries));
-      const remote = await fetchProgressFromApi();
-      if (remote?.sha) remoteSha = remote.sha;
-      res = await put();
+      await mergePartnerFromRemote();
+      ({ body, content } = buildBody());
+      res = await put(body);
     }
     if (!res.ok) {
       let detail = '';
@@ -1117,6 +1137,8 @@ async function pushRemote(){
     pushAttempt = 0;
     setSyncStatus('online', 'Synchronisé');
     hideSyncBanner();
+    saveCache();
+    renderRows();
   } catch (err) {
     console.error('[MarvelList] Échec de la sauvegarde GitHub :', err);
     setSyncStatus('offline', 'Erreur enregistrement');
